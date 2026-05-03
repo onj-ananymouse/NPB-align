@@ -1,0 +1,217 @@
+
+<style>
+.team-row{display:flex;align-items:center;gap:10px;background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);padding:10px 12px;cursor:grab;user-select:none;transition:opacity .15s}
+.team-row.dragging{opacity:.35;cursor:grabbing}
+.team-row.drag-over{border-color:var(--color-border-primary);background:var(--color-background-secondary)}
+.rank-badge{width:22px;height:22px;border-radius:50%;background:var(--color-background-secondary);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;color:var(--color-text-secondary);flex-shrink:0}
+.symbol{font-size:20px;font-weight:500;width:28px;text-align:center;flex-shrink:0}
+.team-name{font-size:13px;color:var(--color-text-secondary);flex:1}
+.gb-wrap{display:flex;align-items:center;gap:6px}
+.gb-wrap label{font-size:12px;color:var(--color-text-tertiary);white-space:nowrap}
+.gb-wrap input{width:52px;padding:4px 6px;font-size:13px}
+.drag-handle{color:var(--color-text-tertiary);font-size:14px;cursor:grab;padding:0 2px}
+.result-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 16px;margin-top:1rem}
+.save-indicator{font-size:12px;color:var(--color-text-tertiary);transition:opacity .4s}
+.save-indicator.visible{opacity:1}
+.save-indicator.hidden{opacity:0}
+</style>
+
+<h2 style="position:absolute;left:-9999px">セ・リーグ順位スレタイ生成（ドラッグ並べ替え・キャッシュ対応）</h2>
+
+<div style="padding:1rem 0">
+  <div id="list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem"></div>
+
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem">
+    <button onclick="resetAll()">リセット</button>
+    <span id="save-indicator" class="save-indicator hidden">保存しました</span>
+  </div>
+
+  <div id="result-area">
+    <div class="result-box">
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:6px">生成されたスレタイ</div>
+      <div id="result-text" style="font-size:20px;font-weight:500;letter-spacing:0.05em;word-break:break-all;color:var(--color-text-primary)">-</div>
+    </div>
+    <div style="margin-top:8px">
+      <button id="copy-btn" onclick="copyResult()">コピー</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TEAMS = [
+  {name:"阪神タイガース", symbol:"虎"},
+  {name:"読売ジャイアンツ", symbol:"巨"},
+  {name:"広島東洋カープ", symbol:"鯉"},
+  {name:"中日ドラゴンズ", symbol:"竜"},
+  {name:"ヤクルトスワローズ", symbol:"燕"},
+  {name:"横浜DeNAベイスターズ", symbol:"星"},
+];
+
+const STORAGE_KEY = "npb_sthread_v1";
+let order = TEAMS.map((_,i)=>i);
+let dragSrc = null;
+let saveTimer = null;
+
+function loadCache() {
+  try {
+    const raw = window.storage && window.storage.get
+      ? null
+      : localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  } catch(e){ return null; }
+}
+
+function saveCache() {
+  try {
+    const gbs = [];
+    for(let i=1;i<order.length;i++){
+      const el=document.getElementById(`gb-${i}`);
+      gbs.push(el?parseFloat(el.value)||0:0);
+    }
+    const data = JSON.stringify({order, gbs});
+    localStorage.setItem(STORAGE_KEY, data);
+    showSaved();
+  } catch(e){}
+}
+
+function showSaved() {
+  const el = document.getElementById("save-indicator");
+  el.classList.remove("hidden");
+  el.classList.add("visible");
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    el.classList.remove("visible");
+    el.classList.add("hidden");
+  }, 1500);
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveCache, 600);
+}
+
+function renderList(gbValues) {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  order.forEach((ti, rank) => {
+    const t = TEAMS[ti];
+    const row = document.createElement("div");
+    row.className = "team-row";
+    row.draggable = true;
+    row.dataset.rank = rank;
+    const isFirst = rank === 0;
+    const gbVal = (!isFirst && gbValues && gbValues[rank-1] !== undefined) ? gbValues[rank-1] : 0;
+
+    row.innerHTML = `
+      <span class="drag-handle">&#9776;</span>
+      <span class="rank-badge">${rank+1}</span>
+      <span class="symbol">${t.symbol}</span>
+      <span class="team-name">${t.name}</span>
+      ${isFirst
+        ? `<span style="font-size:12px;color:var(--color-text-tertiary);min-width:90px;text-align:right">首位</span>`
+        : `<span class="gb-wrap">
+            <label>前差</label>
+            <input type="number" min="0" max="20" step="0.5" value="${gbVal}" id="gb-${rank}" oninput="generate();scheduleSave()">
+          </span>`
+      }
+    `;
+
+    row.addEventListener("dragstart", e => {
+      dragSrc = rank;
+      setTimeout(()=>row.classList.add("dragging"),0);
+      e.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragend", () => row.classList.remove("dragging"));
+    row.addEventListener("dragover", e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      document.querySelectorAll(".team-row").forEach(r=>r.classList.remove("drag-over"));
+      row.classList.add("drag-over");
+    });
+    row.addEventListener("dragleave", () => row.classList.remove("drag-over"));
+    row.addEventListener("drop", e => {
+      e.preventDefault();
+      row.classList.remove("drag-over");
+      if(dragSrc===null||dragSrc===rank) return;
+      const saved = collectGbs();
+      const newOrder = [...order];
+      const [moved] = newOrder.splice(dragSrc,1);
+      newOrder.splice(rank,0,moved);
+      order = newOrder;
+      const newGbs = [...saved];
+      const fromIdx = dragSrc-1;
+      const toIdx = rank-1;
+      if(dragSrc===0 && rank>0){
+        newGbs.splice(toIdx,0,0);
+      } else if(rank===0 && dragSrc>0){
+        newGbs.splice(fromIdx,1);
+      } else {
+        const [g] = newGbs.splice(fromIdx,1);
+        newGbs.splice(toIdx<0?0:toIdx,0,g);
+      }
+      renderList(newGbs);
+      saveCache();
+    });
+
+    list.appendChild(row);
+  });
+  generate();
+}
+
+function collectGbs() {
+  const vals = [];
+  for(let i=1;i<order.length;i++){
+    const el=document.getElementById(`gb-${i}`);
+    vals.push(el?parseFloat(el.value)||0:0);
+  }
+  return vals;
+}
+
+function getGb(rank) {
+  if(rank===0) return 0;
+  const el=document.getElementById(`gb-${rank}`);
+  if(!el) return 0;
+  const v=parseFloat(el.value);
+  return isNaN(v)?0:v;
+}
+
+function generate() {
+  let title="";
+  for(let i=0;i<order.length;i++){
+    title+=TEAMS[order[i]].symbol;
+    if(i<order.length-1){
+      const diff=Math.max(0,getGb(i+1));
+      const full=Math.floor(diff);
+      const half=Math.round((diff-full)*2);
+      title+="=".repeat(full)+"-".repeat(half);
+    }
+  }
+  document.getElementById("result-text").textContent=title||"-";
+  document.getElementById("copy-btn").textContent="コピー";
+}
+
+function resetAll() {
+  order=TEAMS.map((_,i)=>i);
+  try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+  renderList([]);
+}
+
+function copyResult() {
+  const text=document.getElementById("result-text").textContent;
+  navigator.clipboard.writeText(text).then(()=>{
+    document.getElementById("copy-btn").textContent="コピーしました！";
+    setTimeout(()=>document.getElementById("copy-btn").textContent="コピー",2000);
+  });
+}
+
+(function init(){
+  const cache = loadCache();
+  if(cache && Array.isArray(cache.order) && cache.order.length===TEAMS.length){
+    order = cache.order;
+    renderList(cache.gbs||[]);
+  } else {
+    renderList([]);
+  }
+})();
+</script>
