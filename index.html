@@ -12,8 +12,13 @@
       padding: 2rem 1.5rem; line-height: 1.7;
     }
     h1 { font-size: 22px; font-weight: 500; margin-bottom: 1.25rem; }
-    .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 1.5rem; }
+    .top-controls { margin-bottom: 1.75rem; display: flex; flex-direction: column; gap: 8px; }
+    .toggle-row { display: flex; align-items: center; gap: 8px; }
     .toggle-row label { font-size: 13px; color: #5f5e5a; cursor: pointer; user-select: none; }
+    .wall-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .wall-row label { font-size: 13px; color: #5f5e5a; cursor: pointer; user-select: none; }
+    .wall-row input[type=number] { width: 60px; padding: 4px 6px; font-size: 13px; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 6px; background: #fff; color: #1a1a18; outline: none; }
+    .wall-hint { font-size: 11px; color: #888; }
     .league-section { margin-bottom: 2.5rem; }
     .league-label { font-size: 13px; font-weight: 500; color: #5f5e5a; margin-bottom: 0.6rem; }
     .inner { max-width: 480px; }
@@ -43,7 +48,6 @@
       background: #fff; color: #1a1a18; outline: none;
     }
     .gb-wrap input:focus { border-color: rgba(0,0,0,0.4); }
-    .actions { display: flex; gap: 8px; align-items: center; margin-bottom: 0.75rem; }
     button {
       padding: 6px 16px; font-size: 13px; background: transparent; color: #1a1a18;
       border: 0.5px solid rgba(0,0,0,0.25); border-radius: 6px;
@@ -51,17 +55,37 @@
     }
     button:hover { background: #f1efe8; }
     button:active { transform: scale(0.98); }
-    .save-indicator { font-size: 12px; color: #888; transition: opacity .4s; opacity: 0; }
-    .save-indicator.visible { opacity: 1; }
     .result-box { background: #f1efe8; border-radius: 8px; padding: 12px 16px; margin-top: 1rem; }
     .result-label { font-size: 12px; color: #5f5e5a; margin-bottom: 6px; }
     .result-text { font-size: 20px; font-weight: 500; letter-spacing: 0.05em; word-break: break-all; color: #1a1a18; }
+    .preview-box { background: #f1efe8; border-radius: 8px; padding: 12px 16px; margin-top: 10px; border: 0.5px dashed rgba(0,0,0,0.2); }
     hr.divider { border: none; border-top: 0.5px solid rgba(0,0,0,0.12); margin: 0 0 2.5rem; }
+    .accordion-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; margin-top: 1rem; background: #f1efe8; border-radius: 8px;
+      cursor: pointer; user-select: none; border: none; width: 100%;
+      text-align: left; font-family: inherit; transition: opacity .1s;
+    }
+    .accordion-toggle:hover { opacity: .8; }
+    .accordion-toggle-label { font-size: 12px; color: #5f5e5a; }
+    .accordion-arrow { font-size: 11px; color: #888; transition: transform .2s; }
+    .accordion-arrow.open { transform: rotate(180deg); }
+    .accordion-body { overflow: hidden; max-height: 0; transition: max-height .3s ease; }
+    .accordion-body.open { max-height: 1000px; }
+    .result-input-area { padding: 10px 12px; background: #f1efe8; border-radius: 0 0 8px 8px; margin-top: 1px; }
+    .result-input-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 0.5px solid rgba(0,0,0,0.08); }
+    .result-input-row:last-of-type { border-bottom: none; }
+    .result-team-symbol { font-size: 16px; font-weight: 500; width: 22px; text-align: center; flex-shrink: 0; }
+    .result-team-name { font-size: 12px; color: #5f5e5a; width: 130px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .result-checks { display: flex; gap: 12px; flex-shrink: 0; }
+    .result-checks label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #5f5e5a; cursor: pointer; }
+    .update-btn-row { margin-top: 10px; display: flex; gap: 8px; align-items: center; }
     @media (prefers-color-scheme: dark) {
       body { background: #1c1c1a; color: #e8e6df; }
-      .toggle-row label, .league-label { color: #b4b2a9; }
+      .toggle-row label, .wall-row label, .league-label { color: #b4b2a9; }
+      .wall-row input[type=number] { background: #2a2a28; color: #e8e6df; border-color: rgba(255,255,255,0.15); }
+      .wall-hint { color: #666; }
       .team-row { background: #2a2a28; border-color: rgba(255,255,255,0.1); }
-      .team-row.sortable-ghost { opacity: .35; }
       .rank-badge { background: #333330; color: #b4b2a9; }
       .team-name { color: #b4b2a9; }
       .first-label, .drag-handle { color: #666; }
@@ -69,10 +93,17 @@
       .gb-wrap input { background: #2a2a28; color: #e8e6df; border-color: rgba(255,255,255,0.15); }
       button { color: #e8e6df; border-color: rgba(255,255,255,0.2); }
       button:hover { background: #333330; }
-      .result-box { background: #2a2a28; }
+      .result-box, .preview-box { background: #2a2a28; }
+      .preview-box { border-color: rgba(255,255,255,0.15); }
       .result-label { color: #b4b2a9; }
       .result-text { color: #e8e6df; }
       hr.divider { border-color: rgba(255,255,255,0.1); }
+      .accordion-toggle { background: #2a2a28; }
+      .accordion-toggle-label { color: #b4b2a9; }
+      .accordion-arrow { color: #666; }
+      .result-input-area { background: #2a2a28; }
+      .result-input-row { border-color: rgba(255,255,255,0.08); }
+      .result-team-name, .result-checks label { color: #b4b2a9; }
     }
   </style>
 </head>
@@ -80,9 +111,18 @@
 
 <h1>順位スレッドタイトルジェネレーター</h1>
 
-<div class="toggle-row">
-  <input type="checkbox" id="pl-first-toggle" onchange="applyOrder()">
-  <label for="pl-first-toggle">パ・リーグを上に表示</label>
+<div class="top-controls">
+  <div class="toggle-row">
+    <input type="checkbox" id="pl-first-toggle" onchange="applyOrder()">
+    <label for="pl-first-toggle">パ・リーグを上に表示</label>
+  </div>
+  <div class="wall-row">
+    <input type="checkbox" id="wall-toggle" onchange="generateAll()">
+    <label for="wall-toggle">5割の壁を表示</label>
+    <span style="font-size:13px;color:#5f5e5a">交流戦勝ち越し（セ）</span>
+    <input type="number" id="interleague-wins" value="0" step="1" oninput="generateAll()">
+    <span class="wall-hint">※パが勝ち越しならマイナス</span>
+  </div>
 </div>
 
 <div id="sections-wrapper">
@@ -91,15 +131,30 @@
       <div class="league-label">セ・リーグ</div>
       <div class="inner">
         <div class="list" id="list-cl"></div>
-        <div class="actions">
-          <button onclick="resetLeague('cl')">リセット</button>
-          <span class="save-indicator" id="save-cl">保存しました</span>
-        </div>
         <div class="result-box">
-          <div class="result-label">生成されたスレタイ</div>
+          <div class="result-label">現在のスレタイ</div>
           <div class="result-text" id="result-cl">-</div>
         </div>
         <div style="margin-top:8px"><button id="copy-cl" onclick="copyResult('cl')">コピー</button></div>
+        <button class="accordion-toggle" onclick="toggleAccordion('cl')">
+          <span class="accordion-toggle-label">試合結果を入力してゲーム差を更新</span>
+          <span class="accordion-arrow" id="arrow-cl">▼</span>
+        </button>
+        <div class="accordion-body" id="accordion-cl">
+          <div class="result-input-area">
+            <div id="result-inputs-cl"></div>
+            <div id="preview-wrap-cl" style="display:none">
+              <div class="preview-box">
+                <div class="result-label">更新予定のスレタイ</div>
+                <div class="result-text" id="preview-cl" style="color:#888">-</div>
+              </div>
+            </div>
+            <div class="update-btn-row">
+              <button onclick="applyResults('cl')">更新</button>
+              <button onclick="clearChecks('cl')">クリア</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <hr class="divider">
@@ -109,15 +164,30 @@
       <div class="league-label">パ・リーグ</div>
       <div class="inner">
         <div class="list" id="list-pl"></div>
-        <div class="actions">
-          <button onclick="resetLeague('pl')">リセット</button>
-          <span class="save-indicator" id="save-pl">保存しました</span>
-        </div>
         <div class="result-box">
-          <div class="result-label">生成されたスレタイ</div>
+          <div class="result-label">現在のスレタイ</div>
           <div class="result-text" id="result-pl">-</div>
         </div>
         <div style="margin-top:8px"><button id="copy-pl" onclick="copyResult('pl')">コピー</button></div>
+        <button class="accordion-toggle" onclick="toggleAccordion('pl')">
+          <span class="accordion-toggle-label">試合結果を入力してゲーム差を更新</span>
+          <span class="accordion-arrow" id="arrow-pl">▼</span>
+        </button>
+        <div class="accordion-body" id="accordion-pl">
+          <div class="result-input-area">
+            <div id="result-inputs-pl"></div>
+            <div id="preview-wrap-pl" style="display:none">
+              <div class="preview-box">
+                <div class="result-label">更新予定のスレタイ</div>
+                <div class="result-text" id="preview-pl" style="color:#888">-</div>
+              </div>
+            </div>
+            <div class="update-btn-row">
+              <button onclick="applyResults('pl')">更新</button>
+              <button onclick="clearChecks('pl')">クリア</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -155,6 +225,15 @@ const state = {
   pl: { order:[0,1,2,3,4,5], saveTimer:null },
 };
 const PREF_KEY = "npb_pl_first";
+const WALL_KEY = "npb_wall_settings";
+
+function toggleAccordion(lid) {
+  const body = document.getElementById("accordion-"+lid);
+  const arrow = document.getElementById("arrow-"+lid);
+  const isOpen = body.classList.contains("open");
+  body.classList.toggle("open", !isOpen);
+  arrow.classList.toggle("open", !isOpen);
+}
 
 function applyOrder() {
   const plFirst = document.getElementById("pl-first-toggle").checked;
@@ -179,20 +258,222 @@ function saveCache(lid) {
       gbs.push(el?parseFloat(el.value)||0:0);
     }
     localStorage.setItem(LEAGUES[lid].key, JSON.stringify({order:s.order, gbs}));
-    showSaved(lid);
   } catch(e){}
 }
 
-function showSaved(lid) {
-  const el=document.getElementById("save-"+lid);
-  el.classList.add("visible");
-  clearTimeout(state[lid].saveTimer);
-  state[lid].saveTimer=setTimeout(()=>el.classList.remove("visible"), 1500);
+function saveWallSettings() {
+  try {
+    const show = document.getElementById("wall-toggle").checked;
+    const wins = parseFloat(document.getElementById("interleague-wins").value)||0;
+    localStorage.setItem(WALL_KEY, JSON.stringify({show, wins}));
+  } catch(e){}
 }
 
 function scheduleSave(lid) {
   clearTimeout(state[lid].saveTimer);
   state[lid].saveTimer=setTimeout(()=>saveCache(lid), 600);
+}
+
+function getAbsoluteGbs(lid) {
+  const s = state[lid];
+  const abs = [0];
+  let cumulative = 0;
+  for(let i=1; i<s.order.length; i++){
+    const el = document.getElementById("gb-"+lid+"-"+i);
+    const v = el ? parseFloat(el.value)||0 : 0;
+    cumulative += v;
+    abs.push(cumulative);
+  }
+  return abs;
+}
+
+function calcWallValue(lid, lastGb) {
+  const baseWall = lastGb / 2;
+  const interWins = parseFloat(document.getElementById("interleague-wins").value) || 0;
+  const correction = lid === 'cl' ? interWins / 2 : -interWins / 2;
+  return baseWall + correction;
+}
+
+function buildTitleFromItems(items, wall, showWall) {
+  const EPS = 0.01;
+  if(!showWall) {
+    let title = "";
+    for(let i=0; i<items.length; i++){
+      title += items[i].symbol;
+      if(i < items.length-1){
+        const diff = Math.max(0, items[i+1].gb - items[i].gb);
+        const full = Math.floor(diff), half = Math.round((diff-full)*2);
+        title += "=".repeat(full)+"-".repeat(half);
+      }
+    }
+    return title || "-";
+  }
+  const matchExists = items.some(e => Math.abs(e.gb - wall) < EPS);
+  let title = "";
+  if(matchExists) {
+    for(let i=0; i<items.length; i++){
+      const isWall = Math.abs(items[i].gb - wall) < EPS;
+      if(isWall) {
+        let wallGroup = items[i].symbol;
+        let j = i+1;
+        while(j < items.length && Math.abs(items[j].gb - wall) < EPS){ wallGroup += items[j].symbol; j++; }
+        title += "/"+wallGroup+"/";
+        if(j < items.length){
+          const diff = Math.max(0, items[j].gb - items[i].gb);
+          const full = Math.floor(diff), half = Math.round((diff-full)*2);
+          title += "=".repeat(full)+"-".repeat(half);
+        }
+        i = j-1;
+      } else {
+        title += items[i].symbol;
+        if(i < items.length-1){
+          const diff = Math.max(0, items[i+1].gb - items[i].gb);
+          const full = Math.floor(diff), half = Math.round((diff-full)*2);
+          title += "=".repeat(full)+"-".repeat(half);
+        }
+      }
+    }
+  } else {
+    let wallDone = false;
+    for(let i=0; i<items.length; i++){
+      if(!wallDone && items[i].gb >= wall - EPS){
+        if(i === 0 || wall > items[i-1].gb + EPS){
+          if(i > 0){ const d=Math.max(0,wall-items[i-1].gb); const f=Math.floor(d),h=Math.round((d-f)*2); title+="=".repeat(f)+"-".repeat(h); }
+          title += "//";
+          const d=Math.max(0,items[i].gb-wall); const f=Math.floor(d),h=Math.round((d-f)*2); title+="=".repeat(f)+"-".repeat(h);
+          wallDone = true;
+        }
+      }
+      title += items[i].symbol;
+      if(i < items.length-1){
+        if(!wallDone && wall > items[i].gb + EPS && wall <= items[i+1].gb + EPS){
+          const d1=Math.max(0,wall-items[i].gb); const f1=Math.floor(d1),h1=Math.round((d1-f1)*2); title+="=".repeat(f1)+"-".repeat(h1);
+          title += "//";
+          const d2=Math.max(0,items[i+1].gb-wall); const f2=Math.floor(d2),h2=Math.round((d2-f2)*2); title+="=".repeat(f2)+"-".repeat(h2);
+          wallDone = true;
+        } else {
+          const diff=Math.max(0,items[i+1].gb-items[i].gb); const full=Math.floor(diff),half=Math.round((diff-full)*2);
+          title+="=".repeat(full)+"-".repeat(half);
+        }
+      }
+    }
+    if(!wallDone){ const last=items[items.length-1]; const d=Math.max(0,wall-last.gb); const f=Math.floor(d),h=Math.round((d-f)*2); title+="=".repeat(f)+"-".repeat(h)+"//"; }
+  }
+  return title || "-";
+}
+
+function generate(lid) {
+  const s = state[lid];
+  const teams = LEAGUES[lid].teams;
+  const absGbs = getAbsoluteGbs(lid);
+  const showWall = document.getElementById("wall-toggle").checked;
+  const lastGb = absGbs[absGbs.length-1];
+  const wall = calcWallValue(lid, lastGb);
+  const items = s.order.map((ti, rank) => ({symbol: teams[ti].symbol, gb: absGbs[rank]}));
+  document.getElementById("result-"+lid).textContent = buildTitleFromItems(items, wall, showWall);
+  document.getElementById("copy-"+lid).textContent = "コピー";
+}
+
+function generateAll() {
+  saveWallSettings();
+  generate('cl');
+  generate('pl');
+  ["cl","pl"].forEach(lid => updatePreview(lid));
+}
+
+function calcPreviewTitle(lid) {
+  const s = state[lid];
+  const teams = LEAGUES[lid].teams;
+  const absGbs = getAbsoluteGbs(lid);
+  const newAbsGbs = absGbs.map((gb, rank) => {
+    const teamIdx = s.order[rank];
+    const win = document.getElementById("chk-"+lid+"-"+teamIdx+"-win");
+    const lose = document.getElementById("chk-"+lid+"-"+teamIdx+"-lose");
+    if(win && win.checked) return gb - 0.5;
+    if(lose && lose.checked) return gb + 0.5;
+    return gb;
+  });
+  const minGb = Math.min(...newAbsGbs);
+  const normalized = newAbsGbs.map(gb => gb - minGb);
+  const ranked = s.order.map((teamIdx, rank) => ({teamIdx, gb: normalized[rank]}));
+  ranked.sort((a, b) => a.gb - b.gb);
+  const lastGb = ranked[ranked.length-1].gb;
+  const wall = calcWallValue(lid, lastGb);
+  const showWall = document.getElementById("wall-toggle").checked;
+  const items = ranked.map(r => ({symbol: teams[r.teamIdx].symbol, gb: r.gb}));
+  return buildTitleFromItems(items, wall, showWall);
+}
+
+function updatePreview(lid) {
+  const anyChecked = LEAGUES[lid].teams.some((_, ti) =>
+    ["win","lose","draw"].some(type => {
+      const el = document.getElementById("chk-"+lid+"-"+ti+"-"+type);
+      return el && el.checked;
+    })
+  );
+  const wrap = document.getElementById("preview-wrap-"+lid);
+  if(anyChecked){
+    document.getElementById("preview-"+lid).textContent = calcPreviewTitle(lid);
+    wrap.style.display = "block";
+  } else {
+    wrap.style.display = "none";
+  }
+}
+
+function applyResults(lid) {
+  const s = state[lid];
+  const absGbs = getAbsoluteGbs(lid);
+  const newAbsGbs = absGbs.map((gb, rank) => {
+    const teamIdx = s.order[rank];
+    const win = document.getElementById("chk-"+lid+"-"+teamIdx+"-win");
+    const lose = document.getElementById("chk-"+lid+"-"+teamIdx+"-lose");
+    if(win && win.checked) return gb - 0.5;
+    if(lose && lose.checked) return gb + 0.5;
+    return gb;
+  });
+  const minGb = Math.min(...newAbsGbs);
+  const normalized = newAbsGbs.map(gb => gb - minGb);
+  const ranked = s.order.map((teamIdx, rank) => ({teamIdx, gb: normalized[rank]}));
+  ranked.sort((a, b) => a.gb - b.gb);
+  s.order = ranked.map(r => r.teamIdx);
+  const newGbs = ranked.map(r => r.gb);
+  const prevDiffs = newGbs.map((gb, i) => i===0 ? 0 : gb - newGbs[i-1]);
+  renderList(lid, prevDiffs.slice(1));
+  initSortable(lid);
+  renderResultInputs(lid);
+  document.getElementById("preview-wrap-"+lid).style.display = "none";
+  saveCache(lid);
+}
+
+function clearChecks(lid) {
+  LEAGUES[lid].teams.forEach((_, ti) => {
+    ["win","lose","draw"].forEach(type => {
+      const el = document.getElementById("chk-"+lid+"-"+ti+"-"+type);
+      if(el) el.checked = false;
+    });
+  });
+  document.getElementById("preview-wrap-"+lid).style.display = "none";
+}
+
+function renderResultInputs(lid) {
+  const s = state[lid];
+  const teams = LEAGUES[lid].teams;
+  const container = document.getElementById("result-inputs-"+lid);
+  container.innerHTML = "";
+  s.order.forEach(ti => {
+    const t = teams[ti];
+    const row = document.createElement("div");
+    row.className = "result-input-row";
+    row.innerHTML =
+      '<span class="result-team-symbol">'+t.symbol+'</span>'+
+      '<span class="result-team-name">'+t.name+'</span>'+
+      '<span class="result-checks">'+
+        '<label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-win" value="win" onchange="updatePreview(\''+lid+'\')"> 勝</label>'+
+        '<label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-lose" value="lose" onchange="updatePreview(\''+lid+'\')"> 負</label>'+
+        '<label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-draw" value="draw" onchange="updatePreview(\''+lid+'\')"> 分</label>'+
+      '</span>';
+    container.appendChild(row);
+  });
 }
 
 function renderList(lid, gbValues) {
@@ -261,38 +542,10 @@ function initSortable(lid) {
     dragClass: "sortable-drag",
     onEnd: ()=>{
       syncOrderFromDOM(lid);
+      renderResultInputs(lid);
       saveCache(lid);
     }
   });
-}
-
-function getGb(lid, rank) {
-  if(rank===0) return 0;
-  const el=document.getElementById("gb-"+lid+"-"+rank);
-  const v=parseFloat(el?el.value:0);
-  return isNaN(v)?0:v;
-}
-
-function generate(lid) {
-  const s=state[lid], teams=LEAGUES[lid].teams;
-  let title="";
-  for(let i=0;i<s.order.length;i++){
-    title+=teams[s.order[i]].symbol;
-    if(i<s.order.length-1){
-      const diff=Math.max(0,getGb(lid,i+1));
-      const full=Math.floor(diff), half=Math.round((diff-full)*2);
-      title+="=".repeat(full)+"-".repeat(half);
-    }
-  }
-  document.getElementById("result-"+lid).textContent=title||"-";
-  document.getElementById("copy-"+lid).textContent="コピー";
-}
-
-function resetLeague(lid) {
-  state[lid].order=LEAGUES[lid].teams.map((_,i)=>i);
-  try{ localStorage.removeItem(LEAGUES[lid].key); }catch(e){}
-  renderList(lid,[]);
-  initSortable(lid);
 }
 
 function copyResult(lid) {
@@ -310,14 +563,19 @@ function copyResult(lid) {
     state[lid].order=cache.order; renderList(lid,cache.gbs||[]);
   } else { renderList(lid,[]); }
   initSortable(lid);
+  renderResultInputs(lid);
 });
 
 try {
   const pref=localStorage.getItem(PREF_KEY);
-  if(pref==="1"){
-    document.getElementById("pl-first-toggle").checked=true;
-    applyOrder();
-  }
+  if(pref==="1"){ document.getElementById("pl-first-toggle").checked=true; applyOrder(); }
+} catch(e){}
+
+try {
+  const ws=JSON.parse(localStorage.getItem(WALL_KEY)||"{}");
+  if(ws.show){ document.getElementById("wall-toggle").checked=true; }
+  if(ws.wins !== undefined){ document.getElementById("interleague-wins").value=ws.wins; }
+  generateAll();
 } catch(e){}
 </script>
 </body>
