@@ -82,6 +82,9 @@
     .result-checks { display: flex; gap: 12px; flex-shrink: 0; }
     .result-checks label { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #5f5e5a; cursor: pointer; }
     .update-btn-row { margin-top: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .clear-cache-section { margin-top: 2rem; padding-top: 1.5rem; border-top: 0.5px solid rgba(0,0,0,0.12); max-width: 480px; }
+    .clear-cache-btn { color: #888; border-color: rgba(0,0,0,0.15); font-size: 12px; }
+    .clear-cache-btn:hover { color: #c0392b; border-color: #c0392b; background: transparent; }
     @media (prefers-color-scheme: dark) {
       body { background: #1c1c1a; color: #e8e6df; }
       .toggle-row label, .wall-row label, .league-label { color: #b4b2a9; }
@@ -106,6 +109,9 @@
       .result-input-area { background: #2a2a28; }
       .result-input-row { border-color: rgba(255,255,255,0.08); }
       .result-team-name, .result-checks label { color: #b4b2a9; }
+      .clear-cache-section { border-color: rgba(255,255,255,0.1); }
+      .clear-cache-btn { color: #666; border-color: rgba(255,255,255,0.15); }
+      .clear-cache-btn:hover { color: #e74c3c; border-color: #e74c3c; }
     }
   </style>
 </head>
@@ -249,6 +255,10 @@
   </div>
 </div>
 
+<div class="clear-cache-section">
+  <button class="clear-cache-btn" onclick="clearAllCache()">全ての順位データをクリア</button>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
 const SE_INDICES=new Set([0,1,2,3,4,5]);
@@ -285,6 +295,27 @@ const state={
 };
 const PREF_KEY="npb_pl_first",WALL_KEY="npb_wall_settings";
 
+function clearAllCache(){
+  if(!confirm("全ての順位データを消しますか？\n順位・ゲーム差・設定がリセットされます。")) return;
+  try{
+    ["cl","pl","ix"].forEach(lid=>localStorage.removeItem(LEAGUES[lid].key));
+    localStorage.removeItem(PREF_KEY);
+    localStorage.removeItem(WALL_KEY);
+  }catch(e){}
+  state.cl.order=[0,1,2,3,4,5];
+  state.pl.order=[0,1,2,3,4,5];
+  state.ix.order=[0,1,2,3,4,5,6,7,8,9,10,11];
+  document.getElementById("pl-first-toggle").checked=false;
+  document.getElementById("wall-toggle").checked=false;
+  document.getElementById("wall-toggle-ix").checked=false;
+  document.getElementById("interleague-wins").value=0;
+  const wrapper=document.getElementById("sections-wrapper");
+  const secCl=document.getElementById("section-cl"),secPl=document.getElementById("section-pl");
+  wrapper.insertBefore(secCl,secPl);
+  ["cl","pl","ix"].forEach(lid=>{renderList(lid,[]);initSortable(lid);renderResultInputs(lid);});
+  generateAll();
+}
+
 function toggleAccordion(lid){
   const body=document.getElementById("accordion-"+lid),arrow=document.getElementById("arrow-"+lid);
   if(!body)return;
@@ -319,9 +350,6 @@ function getAbsoluteGbs(lid){
   for(let i=1;i<s.order.length;i++){const el=document.getElementById("gb-"+lid+"-"+i);const v=el?parseFloat(el.value)||0:0;cumulative+=v;abs.push(cumulative);}
   return abs;
 }
-
-// 首位の貯金 = (ゲーム差の合計 + 勝ち越し数) / チーム数
-// 5割の壁 = 首位の貯金
 function calcWallValue(lid,absGbs){
   const sumGbs=absGbs.reduce((a,b)=>a+b,0),teamCount=absGbs.length;
   if(lid==='ix') return sumGbs/teamCount;
@@ -329,7 +357,6 @@ function calcWallValue(lid,absGbs){
   const correction=lid==='cl'?interWins:-interWins;
   return (sumGbs+correction)/teamCount;
 }
-
 function buildTitleFromItems(items,wall,showWall){
   const EPS=0.01;
   if(!showWall){
@@ -367,7 +394,6 @@ function generate(lid){
   document.getElementById("copy-"+lid).textContent="コピー";
 }
 function generateAll(){saveWallSettings();generate('cl');generate('pl');generate('ix');["cl","pl","ix"].forEach(lid=>updatePreview(lid));}
-
 function updateInterleagueWins(){
   const s=state['ix'],absGbs=getAbsoluteGbs('ix');
   const seGbs=s.order.map((ti,rank)=>SE_INDICES.has(ti)?absGbs[rank]:null).filter(v=>v!==null);
@@ -377,7 +403,6 @@ function updateInterleagueWins(){
   document.getElementById("interleague-wins").value=Math.round((paAvg-seAvg)*6);
   generateAll();
 }
-
 function applyResultsToLeague(leagueLid,deltaMap){
   const s=state[leagueLid],absGbs=getAbsoluteGbs(leagueLid);
   const newAbsGbs=absGbs.map((gb,rank)=>gb+(deltaMap[s.order[rank]]||0));
