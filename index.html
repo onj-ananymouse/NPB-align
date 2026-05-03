@@ -289,11 +289,13 @@ function getAbsoluteGbs(lid) {
   return abs;
 }
 
-function calcWallValue(lid, lastGb) {
-  const baseWall = lastGb / 2;
+function calcWallValue(lid, absGbs) {
+  const teamCount = absGbs.length;
+  const sumGbs = absGbs.reduce((a, b) => a + b, 0);
+  const leadersCredit = sumGbs / teamCount;
   const interWins = parseFloat(document.getElementById("interleague-wins").value) || 0;
   const correction = lid === 'cl' ? interWins / 2 : -interWins / 2;
-  return baseWall + correction;
+  return leadersCredit + correction;
 }
 
 function buildTitleFromItems(items, wall, showWall) {
@@ -369,8 +371,7 @@ function generate(lid) {
   const teams = LEAGUES[lid].teams;
   const absGbs = getAbsoluteGbs(lid);
   const showWall = document.getElementById("wall-toggle").checked;
-  const lastGb = absGbs[absGbs.length-1];
-  const wall = calcWallValue(lid, lastGb);
+  const wall = calcWallValue(lid, absGbs);
   const items = s.order.map((ti, rank) => ({symbol: teams[ti].symbol, gb: absGbs[rank]}));
   document.getElementById("result-"+lid).textContent = buildTitleFromItems(items, wall, showWall);
   document.getElementById("copy-"+lid).textContent = "コピー";
@@ -399,8 +400,8 @@ function calcPreviewTitle(lid) {
   const normalized = newAbsGbs.map(gb => gb - minGb);
   const ranked = s.order.map((teamIdx, rank) => ({teamIdx, gb: normalized[rank]}));
   ranked.sort((a, b) => a.gb - b.gb);
-  const lastGb = ranked[ranked.length-1].gb;
-  const wall = calcWallValue(lid, lastGb);
+  const newAbsGbsSorted = ranked.map(r => r.gb);
+  const wall = calcWallValue(lid, newAbsGbsSorted);
   const showWall = document.getElementById("wall-toggle").checked;
   const items = ranked.map(r => ({symbol: teams[r.teamIdx].symbol, gb: r.gb}));
   return buildTitleFromItems(items, wall, showWall);
