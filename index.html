@@ -251,24 +251,17 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
-const SE_INDICES = new Set([0,1,2,3,4,5]);
-
-const LEAGUES = {
+const SE_INDICES=new Set([0,1,2,3,4,5]);
+const LEAGUES={
   cl:{key:"npb_cl_v1",teams:[
-    {name:"阪神タイガース",symbol:"虎"},
-    {name:"読売ジャイアンツ",symbol:"巨"},
-    {name:"広島東洋カープ",symbol:"鯉"},
-    {name:"中日ドラゴンズ",symbol:"竜"},
-    {name:"ヤクルトスワローズ",symbol:"燕"},
-    {name:"横浜DeNAベイスターズ",symbol:"星"},
+    {name:"阪神タイガース",symbol:"虎"},{name:"読売ジャイアンツ",symbol:"巨"},
+    {name:"広島東洋カープ",symbol:"鯉"},{name:"中日ドラゴンズ",symbol:"竜"},
+    {name:"ヤクルトスワローズ",symbol:"燕"},{name:"横浜DeNAベイスターズ",symbol:"星"},
   ]},
   pl:{key:"npb_pl_v1",teams:[
-    {name:"オリックス・バファローズ",symbol:"檻"},
-    {name:"ソフトバンクホークス",symbol:"鷹"},
-    {name:"西武ライオンズ",symbol:"猫"},
-    {name:"日本ハムファイターズ",symbol:"公"},
-    {name:"東北楽天ゴールデンイーグルス",symbol:"鷲"},
-    {name:"千葉ロッテマリーンズ",symbol:"鴎"},
+    {name:"オリックス・バファローズ",symbol:"檻"},{name:"ソフトバンクホークス",symbol:"鷹"},
+    {name:"西武ライオンズ",symbol:"猫"},{name:"日本ハムファイターズ",symbol:"公"},
+    {name:"東北楽天ゴールデンイーグルス",symbol:"鷲"},{name:"千葉ロッテマリーンズ",symbol:"鴎"},
   ]},
   ix:{key:"npb_ix_v1",teams:[
     {name:"阪神タイガース",symbol:"虎",league:"cl",leagueIdx:0},
@@ -285,50 +278,34 @@ const LEAGUES = {
     {name:"千葉ロッテマリーンズ",symbol:"鴎",league:"pl",leagueIdx:5},
   ]}
 };
-
 const state={
   cl:{order:[0,1,2,3,4,5],saveTimer:null},
   pl:{order:[0,1,2,3,4,5],saveTimer:null},
   ix:{order:[0,1,2,3,4,5,6,7,8,9,10,11],saveTimer:null},
 };
-const PREF_KEY="npb_pl_first";
-const WALL_KEY="npb_wall_settings";
+const PREF_KEY="npb_pl_first",WALL_KEY="npb_wall_settings";
 
 function toggleAccordion(lid){
-  const body=document.getElementById("accordion-"+lid);
-  const arrow=document.getElementById("arrow-"+lid);
+  const body=document.getElementById("accordion-"+lid),arrow=document.getElementById("arrow-"+lid);
   if(!body)return;
   const isOpen=body.classList.contains("open");
-  body.classList.toggle("open",!isOpen);
-  arrow.classList.toggle("open",!isOpen);
+  body.classList.toggle("open",!isOpen);arrow.classList.toggle("open",!isOpen);
 }
-
 function applyOrder(){
   const plFirst=document.getElementById("pl-first-toggle").checked;
   const wrapper=document.getElementById("sections-wrapper");
-  const secCl=document.getElementById("section-cl");
-  const secPl=document.getElementById("section-pl");
-  if(plFirst){wrapper.insertBefore(secPl,secCl);}
-  else{wrapper.insertBefore(secCl,secPl);}
+  const secCl=document.getElementById("section-cl"),secPl=document.getElementById("section-pl");
+  if(plFirst)wrapper.insertBefore(secPl,secCl);else wrapper.insertBefore(secCl,secPl);
   try{localStorage.setItem(PREF_KEY,plFirst?"1":"0");}catch(e){}
 }
-
-function loadCache(lid){
-  try{const r=localStorage.getItem(LEAGUES[lid].key);return r?JSON.parse(r):null;}
-  catch(e){return null;}
-}
-
+function loadCache(lid){try{const r=localStorage.getItem(LEAGUES[lid].key);return r?JSON.parse(r):null;}catch(e){return null;}}
 function saveCache(lid){
   try{
     const s=state[lid],gbs=[];
-    for(let i=1;i<s.order.length;i++){
-      const el=document.getElementById("gb-"+lid+"-"+i);
-      gbs.push(el?parseFloat(el.value)||0:0);
-    }
+    for(let i=1;i<s.order.length;i++){const el=document.getElementById("gb-"+lid+"-"+i);gbs.push(el?parseFloat(el.value)||0:0);}
     localStorage.setItem(LEAGUES[lid].key,JSON.stringify({order:s.order,gbs}));
   }catch(e){}
 }
-
 function saveWallSettings(){
   try{
     const show=document.getElementById("wall-toggle").checked;
@@ -336,403 +313,182 @@ function saveWallSettings(){
     localStorage.setItem(WALL_KEY,JSON.stringify({show,wins}));
   }catch(e){}
 }
-
-function scheduleSave(lid){
-  clearTimeout(state[lid].saveTimer);
-  state[lid].saveTimer=setTimeout(()=>saveCache(lid),600);
-}
-
+function scheduleSave(lid){clearTimeout(state[lid].saveTimer);state[lid].saveTimer=setTimeout(()=>saveCache(lid),600);}
 function getAbsoluteGbs(lid){
-  const s=state[lid];
-  const abs=[0];
-  let cumulative=0;
-  for(let i=1;i<s.order.length;i++){
-    const el=document.getElementById("gb-"+lid+"-"+i);
-    const v=el?parseFloat(el.value)||0:0;
-    cumulative+=v;
-    abs.push(cumulative);
-  }
+  const s=state[lid],abs=[0];let cumulative=0;
+  for(let i=1;i<s.order.length;i++){const el=document.getElementById("gb-"+lid+"-"+i);const v=el?parseFloat(el.value)||0:0;cumulative+=v;abs.push(cumulative);}
   return abs;
 }
 
+// 首位の貯金 = (ゲーム差の合計 + 勝ち越し数) / チーム数
+// 5割の壁 = 首位の貯金
 function calcWallValue(lid,absGbs){
-  const sumGbs=absGbs.reduce((a,b)=>a+b,0);
-  const leadersCredit=sumGbs/absGbs.length;
-  if(lid==='ix')return leadersCredit;
+  const sumGbs=absGbs.reduce((a,b)=>a+b,0),teamCount=absGbs.length;
+  if(lid==='ix') return sumGbs/teamCount;
   const interWins=parseFloat(document.getElementById("interleague-wins").value)||0;
-  const correction=lid==='cl'?interWins/2:-interWins/2;
-  return leadersCredit+correction;
+  const correction=lid==='cl'?interWins:-interWins;
+  return (sumGbs+correction)/teamCount;
 }
 
 function buildTitleFromItems(items,wall,showWall){
   const EPS=0.01;
   if(!showWall){
-    let title="";
-    for(let i=0;i<items.length;i++){
-      title+=items[i].symbol;
-      if(i<items.length-1){const d=Math.max(0,items[i+1].gb-items[i].gb);const f=Math.floor(d),h=Math.round((d-f)*2);title+="=".repeat(f)+"-".repeat(h);}
-    }
-    return title||"-";
+    let t="";
+    for(let i=0;i<items.length;i++){t+=items[i].symbol;if(i<items.length-1){const d=Math.max(0,items[i+1].gb-items[i].gb),f=Math.floor(d),h=Math.round((d-f)*2);t+="=".repeat(f)+"-".repeat(h);}}
+    return t||"-";
   }
   const matchExists=items.some(e=>Math.abs(e.gb-wall)<EPS);
-  let title="";
+  let t="";
   if(matchExists){
     for(let i=0;i<items.length;i++){
       const isWall=Math.abs(items[i].gb-wall)<EPS;
-      if(isWall){
-        let wg=items[i].symbol;let j=i+1;
-        while(j<items.length&&Math.abs(items[j].gb-wall)<EPS){wg+=items[j].symbol;j++;}
-        title+="/"+wg+"/";
-        if(j<items.length){const d=Math.max(0,items[j].gb-items[i].gb);const f=Math.floor(d),h=Math.round((d-f)*2);title+="=".repeat(f)+"-".repeat(h);}
-        i=j-1;
-      }else{
-        title+=items[i].symbol;
-        if(i<items.length-1){const d=Math.max(0,items[i+1].gb-items[i].gb);const f=Math.floor(d),h=Math.round((d-f)*2);title+="=".repeat(f)+"-".repeat(h);}
-      }
+      if(isWall){let wg=items[i].symbol,j=i+1;while(j<items.length&&Math.abs(items[j].gb-wall)<EPS){wg+=items[j].symbol;j++;}t+="/"+wg+"/";if(j<items.length){const d=Math.max(0,items[j].gb-items[i].gb),f=Math.floor(d),h=Math.round((d-f)*2);t+="=".repeat(f)+"-".repeat(h);}i=j-1;}
+      else{t+=items[i].symbol;if(i<items.length-1){const d=Math.max(0,items[i+1].gb-items[i].gb),f=Math.floor(d),h=Math.round((d-f)*2);t+="=".repeat(f)+"-".repeat(h);}}
     }
   }else{
     let wallDone=false;
     for(let i=0;i<items.length;i++){
-      if(!wallDone&&items[i].gb>=wall-EPS){
-        if(i===0||wall>items[i-1].gb+EPS){
-          if(i>0){const d=Math.max(0,wall-items[i-1].gb);const f=Math.floor(d),h=Math.round((d-f)*2);title+="=".repeat(f)+"-".repeat(h);}
-          title+="//";
-          const d=Math.max(0,items[i].gb-wall);const f=Math.floor(d),h=Math.round((d-f)*2);title+="=".repeat(f)+"-".repeat(h);
-          wallDone=true;
-        }
-      }
-      title+=items[i].symbol;
+      if(!wallDone&&items[i].gb>=wall-EPS){if(i===0||wall>items[i-1].gb+EPS){if(i>0){const d=Math.max(0,wall-items[i-1].gb),f=Math.floor(d),h=Math.round((d-f)*2);t+="=".repeat(f)+"-".repeat(h);}t+="//";const d=Math.max(0,items[i].gb-wall),f=Math.floor(d),h=Math.round((d-f)*2);t+="=".repeat(f)+"-".repeat(h);wallDone=true;}}
+      t+=items[i].symbol;
       if(i<items.length-1){
-        if(!wallDone&&wall>items[i].gb+EPS&&wall<=items[i+1].gb+EPS){
-          const d1=Math.max(0,wall-items[i].gb);const f1=Math.floor(d1),h1=Math.round((d1-f1)*2);title+="=".repeat(f1)+"-".repeat(h1);
-          title+="//";
-          const d2=Math.max(0,items[i+1].gb-wall);const f2=Math.floor(d2),h2=Math.round((d2-f2)*2);title+="=".repeat(f2)+"-".repeat(h2);
-          wallDone=true;
-        }else{
-          const d=Math.max(0,items[i+1].gb-items[i].gb);const f=Math.floor(d),h=Math.round((d-f)*2);title+="=".repeat(f)+"-".repeat(h);
-        }
+        if(!wallDone&&wall>items[i].gb+EPS&&wall<=items[i+1].gb+EPS){const d1=Math.max(0,wall-items[i].gb),f1=Math.floor(d1),h1=Math.round((d1-f1)*2);t+="=".repeat(f1)+"-".repeat(h1);t+="//";const d2=Math.max(0,items[i+1].gb-wall),f2=Math.floor(d2),h2=Math.round((d2-f2)*2);t+="=".repeat(f2)+"-".repeat(h2);wallDone=true;}
+        else{const d=Math.max(0,items[i+1].gb-items[i].gb),f=Math.floor(d),h=Math.round((d-f)*2);t+="=".repeat(f)+"-".repeat(h);}
       }
     }
-    if(!wallDone){const last=items[items.length-1];const d=Math.max(0,wall-last.gb);const f=Math.floor(d),h=Math.round((d-f)*2);title+="=".repeat(f)+"-".repeat(h)+"//";}
+    if(!wallDone){const last=items[items.length-1],d=Math.max(0,wall-last.gb),f=Math.floor(d),h=Math.round((d-f)*2);t+="=".repeat(f)+"-".repeat(h)+"//";}
   }
-  return title||"-";
+  return t||"-";
 }
-
 function generate(lid){
-  const s=state[lid],teams=LEAGUES[lid].teams;
-  const absGbs=getAbsoluteGbs(lid);
+  const s=state[lid],teams=LEAGUES[lid].teams,absGbs=getAbsoluteGbs(lid);
   const items=s.order.map((ti,rank)=>({symbol:teams[ti].symbol,gb:absGbs[rank]}));
-  const showWall=lid==='ix'
-    ?document.getElementById("wall-toggle-ix").checked
-    :document.getElementById("wall-toggle").checked;
-  const wall=calcWallValue(lid,absGbs);
-  document.getElementById("result-"+lid).textContent=buildTitleFromItems(items,wall,showWall);
+  const showWall=lid==='ix'?document.getElementById("wall-toggle-ix").checked:document.getElementById("wall-toggle").checked;
+  document.getElementById("result-"+lid).textContent=buildTitleFromItems(items,calcWallValue(lid,absGbs),showWall);
   document.getElementById("copy-"+lid).textContent="コピー";
 }
-
-function generateAll(){
-  saveWallSettings();
-  generate('cl');generate('pl');generate('ix');
-  ["cl","pl","ix"].forEach(lid=>updatePreview(lid));
-}
+function generateAll(){saveWallSettings();generate('cl');generate('pl');generate('ix');["cl","pl","ix"].forEach(lid=>updatePreview(lid));}
 
 function updateInterleagueWins(){
-  const s=state['ix'];
-  const absGbs=getAbsoluteGbs('ix');
+  const s=state['ix'],absGbs=getAbsoluteGbs('ix');
   const seGbs=s.order.map((ti,rank)=>SE_INDICES.has(ti)?absGbs[rank]:null).filter(v=>v!==null);
   const paGbs=s.order.map((ti,rank)=>!SE_INDICES.has(ti)?absGbs[rank]:null).filter(v=>v!==null);
   const seAvg=seGbs.reduce((a,b)=>a+b,0)/seGbs.length;
   const paAvg=paGbs.reduce((a,b)=>a+b,0)/paGbs.length;
-  document.getElementById("interleague-wins").value=Math.round((paAvg-seAvg)*2);
+  document.getElementById("interleague-wins").value=Math.round((paAvg-seAvg)*6);
   generateAll();
 }
 
 function applyResultsToLeague(leagueLid,deltaMap){
-  const s=state[leagueLid];
-  const absGbs=getAbsoluteGbs(leagueLid);
+  const s=state[leagueLid],absGbs=getAbsoluteGbs(leagueLid);
   const newAbsGbs=absGbs.map((gb,rank)=>gb+(deltaMap[s.order[rank]]||0));
-  const minGb=Math.min(...newAbsGbs);
-  const normalized=newAbsGbs.map(gb=>gb-minGb);
-  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));
-  ranked.sort((a,b)=>a.gb-b.gb);
-  s.order=ranked.map(r=>r.ti);
-  const newGbs=ranked.map(r=>r.gb);
-  const prevDiffs=newGbs.map((gb,i)=>i===0?0:gb-newGbs[i-1]);
-  renderList(leagueLid,prevDiffs.slice(1));
-  initSortable(leagueLid);
-  renderResultInputs(leagueLid);
-  saveCache(leagueLid);
+  const minGb=Math.min(...newAbsGbs),normalized=newAbsGbs.map(gb=>gb-minGb);
+  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));ranked.sort((a,b)=>a.gb-b.gb);
+  s.order=ranked.map(r=>r.ti);const newGbs=ranked.map(r=>r.gb),prevDiffs=newGbs.map((gb,i)=>i===0?0:gb-newGbs[i-1]);
+  renderList(leagueLid,prevDiffs.slice(1));initSortable(leagueLid);renderResultInputs(leagueLid);saveCache(leagueLid);
 }
-
 function applyResults(lid){
   if(lid==='ix'){
-    const s=state['ix'],teams=LEAGUES['ix'].teams;
-    const absGbs=getAbsoluteGbs('ix');
-    // ★ DOM再描画前にdeltaマップを保存
+    const s=state['ix'],teams=LEAGUES['ix'].teams,absGbs=getAbsoluteGbs('ix');
     const clDeltas={},plDeltas={};
     s.order.forEach(ti=>{
-      const win=document.getElementById("chk-ix-"+ti+"-win");
-      const lose=document.getElementById("chk-ix-"+ti+"-lose");
+      const win=document.getElementById("chk-ix-"+ti+"-win"),lose=document.getElementById("chk-ix-"+ti+"-lose");
       const delta=win&&win.checked?-0.5:lose&&lose.checked?0.5:0;
       const team=teams[ti];
-      if(team.league==='cl')clDeltas[team.leagueIdx]=delta;
-      else plDeltas[team.leagueIdx]=delta;
+      if(team.league==='cl')clDeltas[team.leagueIdx]=delta;else plDeltas[team.leagueIdx]=delta;
     });
-    // 交流戦順位を更新
-    const newAbsGbs=absGbs.map((gb,rank)=>{
-      const ti=s.order[rank];
-      const win=document.getElementById("chk-ix-"+ti+"-win");
-      const lose=document.getElementById("chk-ix-"+ti+"-lose");
-      if(win&&win.checked)return gb-0.5;
-      if(lose&&lose.checked)return gb+0.5;
-      return gb;
-    });
-    const minGb=Math.min(...newAbsGbs);
-    const normalized=newAbsGbs.map(gb=>gb-minGb);
-    const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));
-    ranked.sort((a,b)=>a.gb-b.gb);
-    s.order=ranked.map(r=>r.ti);
-    const newGbs=ranked.map(r=>r.gb);
-    const prevDiffs=newGbs.map((gb,i)=>i===0?0:gb-newGbs[i-1]);
-    renderList('ix',prevDiffs.slice(1));
-    initSortable('ix');
-    renderResultInputs('ix');
-    document.getElementById("preview-wrap-ix-inner").style.display="none";
-    saveCache('ix');
-    // ★ 保存済みdeltaマップでリーグ戦を更新
-    if(document.getElementById("ix-sync-leagues").checked){
-      applyResultsToLeague('cl',clDeltas);
-      applyResultsToLeague('pl',plDeltas);
-    }
+    const newAbsGbs=absGbs.map((gb,rank)=>{const ti=s.order[rank];const win=document.getElementById("chk-ix-"+ti+"-win"),lose=document.getElementById("chk-ix-"+ti+"-lose");if(win&&win.checked)return gb-0.5;if(lose&&lose.checked)return gb+0.5;return gb;});
+    const minGb=Math.min(...newAbsGbs),normalized=newAbsGbs.map(gb=>gb-minGb);
+    const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));ranked.sort((a,b)=>a.gb-b.gb);
+    s.order=ranked.map(r=>r.ti);const newGbs=ranked.map(r=>r.gb),prevDiffs=newGbs.map((gb,i)=>i===0?0:gb-newGbs[i-1]);
+    renderList('ix',prevDiffs.slice(1));initSortable('ix');renderResultInputs('ix');
+    document.getElementById("preview-wrap-ix-inner").style.display="none";saveCache('ix');
+    if(document.getElementById("ix-sync-leagues").checked){applyResultsToLeague('cl',clDeltas);applyResultsToLeague('pl',plDeltas);}
     return;
   }
-  const s=state[lid];
-  const absGbs=getAbsoluteGbs(lid);
-  const newAbsGbs=absGbs.map((gb,rank)=>{
-    const ti=s.order[rank];
-    const win=document.getElementById("chk-"+lid+"-"+ti+"-win");
-    const lose=document.getElementById("chk-"+lid+"-"+ti+"-lose");
-    if(win&&win.checked)return gb-0.5;
-    if(lose&&lose.checked)return gb+0.5;
-    return gb;
-  });
-  const minGb=Math.min(...newAbsGbs);
-  const normalized=newAbsGbs.map(gb=>gb-minGb);
-  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));
-  ranked.sort((a,b)=>a.gb-b.gb);
-  s.order=ranked.map(r=>r.ti);
-  const newGbs=ranked.map(r=>r.gb);
-  const prevDiffs=newGbs.map((gb,i)=>i===0?0:gb-newGbs[i-1]);
-  renderList(lid,prevDiffs.slice(1));
-  initSortable(lid);
-  renderResultInputs(lid);
-  document.getElementById("preview-wrap-"+lid).style.display="none";
-  saveCache(lid);
+  const s=state[lid],absGbs=getAbsoluteGbs(lid);
+  const newAbsGbs=absGbs.map((gb,rank)=>{const ti=s.order[rank];const win=document.getElementById("chk-"+lid+"-"+ti+"-win"),lose=document.getElementById("chk-"+lid+"-"+ti+"-lose");if(win&&win.checked)return gb-0.5;if(lose&&lose.checked)return gb+0.5;return gb;});
+  const minGb=Math.min(...newAbsGbs),normalized=newAbsGbs.map(gb=>gb-minGb);
+  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));ranked.sort((a,b)=>a.gb-b.gb);
+  s.order=ranked.map(r=>r.ti);const newGbs=ranked.map(r=>r.gb),prevDiffs=newGbs.map((gb,i)=>i===0?0:gb-newGbs[i-1]);
+  renderList(lid,prevDiffs.slice(1));initSortable(lid);renderResultInputs(lid);
+  document.getElementById("preview-wrap-"+lid).style.display="none";saveCache(lid);
 }
-
 function clearChecks(lid){
-  if(lid==='ix'){
-    LEAGUES['ix'].teams.forEach((_,ti)=>{
-      ["win","lose","draw"].forEach(type=>{const el=document.getElementById("chk-ix-"+ti+"-"+type);if(el)el.checked=false;});
-    });
-    document.getElementById("preview-wrap-ix-inner").style.display="none";
-    return;
-  }
-  LEAGUES[lid].teams.forEach((_,ti)=>{
-    ["win","lose","draw"].forEach(type=>{const el=document.getElementById("chk-"+lid+"-"+ti+"-"+type);if(el)el.checked=false;});
-  });
+  if(lid==='ix'){LEAGUES['ix'].teams.forEach((_,ti)=>{["win","lose","draw"].forEach(type=>{const el=document.getElementById("chk-ix-"+ti+"-"+type);if(el)el.checked=false;});});document.getElementById("preview-wrap-ix-inner").style.display="none";return;}
+  LEAGUES[lid].teams.forEach((_,ti)=>{["win","lose","draw"].forEach(type=>{const el=document.getElementById("chk-"+lid+"-"+ti+"-"+type);if(el)el.checked=false;});});
   document.getElementById("preview-wrap-"+lid).style.display="none";
 }
-
 function calcPreviewTitleIx(){
-  const s=state['ix'],teams=LEAGUES['ix'].teams;
-  const absGbs=getAbsoluteGbs('ix');
-  const newAbsGbs=absGbs.map((gb,rank)=>{
-    const ti=s.order[rank];
-    const win=document.getElementById("chk-ix-"+ti+"-win");
-    const lose=document.getElementById("chk-ix-"+ti+"-lose");
-    if(win&&win.checked)return gb-0.5;
-    if(lose&&lose.checked)return gb+0.5;
-    return gb;
-  });
-  const minGb=Math.min(...newAbsGbs);
-  const normalized=newAbsGbs.map(gb=>gb-minGb);
-  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));
-  ranked.sort((a,b)=>a.gb-b.gb);
-  const showWall=document.getElementById("wall-toggle-ix").checked;
-  const wall=calcWallValue('ix',ranked.map(r=>r.gb));
+  const s=state['ix'],teams=LEAGUES['ix'].teams,absGbs=getAbsoluteGbs('ix');
+  const newAbsGbs=absGbs.map((gb,rank)=>{const ti=s.order[rank];const win=document.getElementById("chk-ix-"+ti+"-win"),lose=document.getElementById("chk-ix-"+ti+"-lose");if(win&&win.checked)return gb-0.5;if(lose&&lose.checked)return gb+0.5;return gb;});
+  const minGb=Math.min(...newAbsGbs),normalized=newAbsGbs.map(gb=>gb-minGb);
+  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));ranked.sort((a,b)=>a.gb-b.gb);
+  const showWall=document.getElementById("wall-toggle-ix").checked,wall=calcWallValue('ix',ranked.map(r=>r.gb));
   return buildTitleFromItems(ranked.map(r=>({symbol:teams[r.ti].symbol,gb:r.gb})),wall,showWall);
 }
-
 function calcPreviewTitle(lid){
-  const s=state[lid],teams=LEAGUES[lid].teams;
-  const absGbs=getAbsoluteGbs(lid);
-  const newAbsGbs=absGbs.map((gb,rank)=>{
-    const ti=s.order[rank];
-    const win=document.getElementById("chk-"+lid+"-"+ti+"-win");
-    const lose=document.getElementById("chk-"+lid+"-"+ti+"-lose");
-    if(win&&win.checked)return gb-0.5;
-    if(lose&&lose.checked)return gb+0.5;
-    return gb;
-  });
-  const minGb=Math.min(...newAbsGbs);
-  const normalized=newAbsGbs.map(gb=>gb-minGb);
-  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));
-  ranked.sort((a,b)=>a.gb-b.gb);
-  const wall=calcWallValue(lid,ranked.map(r=>r.gb));
-  const showWall=document.getElementById("wall-toggle").checked;
+  const s=state[lid],teams=LEAGUES[lid].teams,absGbs=getAbsoluteGbs(lid);
+  const newAbsGbs=absGbs.map((gb,rank)=>{const ti=s.order[rank];const win=document.getElementById("chk-"+lid+"-"+ti+"-win"),lose=document.getElementById("chk-"+lid+"-"+ti+"-lose");if(win&&win.checked)return gb-0.5;if(lose&&lose.checked)return gb+0.5;return gb;});
+  const minGb=Math.min(...newAbsGbs),normalized=newAbsGbs.map(gb=>gb-minGb);
+  const ranked=s.order.map((ti,rank)=>({ti,gb:normalized[rank]}));ranked.sort((a,b)=>a.gb-b.gb);
+  const wall=calcWallValue(lid,ranked.map(r=>r.gb)),showWall=document.getElementById("wall-toggle").checked;
   return buildTitleFromItems(ranked.map(r=>({symbol:teams[r.ti].symbol,gb:r.gb})),wall,showWall);
 }
-
 function updatePreview(lid){
   if(lid==='ix'){
-    const anyChecked=LEAGUES['ix'].teams.some((_,ti)=>
-      ["win","lose","draw"].some(type=>{const el=document.getElementById("chk-ix-"+ti+"-"+type);return el&&el.checked;})
-    );
+    const anyChecked=LEAGUES['ix'].teams.some((_,ti)=>["win","lose","draw"].some(type=>{const el=document.getElementById("chk-ix-"+ti+"-"+type);return el&&el.checked;}));
     const wrap=document.getElementById("preview-wrap-ix-inner");
-    if(anyChecked){document.getElementById("preview-ix-inner").textContent=calcPreviewTitleIx();wrap.style.display="block";}
-    else{wrap.style.display="none";}
+    if(anyChecked){document.getElementById("preview-ix-inner").textContent=calcPreviewTitleIx();wrap.style.display="block";}else{wrap.style.display="none";}
     return;
   }
-  const anyChecked=LEAGUES[lid].teams.some((_,ti)=>
-    ["win","lose","draw"].some(type=>{const el=document.getElementById("chk-"+lid+"-"+ti+"-"+type);return el&&el.checked;})
-  );
+  const anyChecked=LEAGUES[lid].teams.some((_,ti)=>["win","lose","draw"].some(type=>{const el=document.getElementById("chk-"+lid+"-"+ti+"-"+type);return el&&el.checked;}));
   const wrap=document.getElementById("preview-wrap-"+lid);
-  if(anyChecked){document.getElementById("preview-"+lid).textContent=calcPreviewTitle(lid);wrap.style.display="block";}
-  else{wrap.style.display="none";}
+  if(anyChecked){document.getElementById("preview-"+lid).textContent=calcPreviewTitle(lid);wrap.style.display="block";}else{wrap.style.display="none";}
 }
-
 function renderResultInputs(lid){
   if(lid==='ix'){
-    const s=state['ix'],teams=LEAGUES['ix'].teams;
-    const container=document.getElementById("result-inputs-ix");
-    if(!container)return;
-    container.innerHTML="";
-    s.order.forEach(ti=>{
-      const t=teams[ti];
-      const row=document.createElement("div");
-      row.className="result-input-row";
-      row.innerHTML=
-        '<span class="result-team-symbol">'+t.symbol+'</span>'+
-        '<span class="result-team-name">'+t.name+'</span>'+
-        '<span class="result-checks">'+
-          '<label><input type="radio" name="res-ix-'+ti+'" id="chk-ix-'+ti+'-win" value="win" onchange="updatePreview(\'ix\')"> 勝</label>'+
-          '<label><input type="radio" name="res-ix-'+ti+'" id="chk-ix-'+ti+'-lose" value="lose" onchange="updatePreview(\'ix\')"> 負</label>'+
-          '<label><input type="radio" name="res-ix-'+ti+'" id="chk-ix-'+ti+'-draw" value="draw" onchange="updatePreview(\'ix\')"> 分</label>'+
-        '</span>';
-      container.appendChild(row);
-    });
+    const s=state['ix'],teams=LEAGUES['ix'].teams,container=document.getElementById("result-inputs-ix");
+    if(!container)return;container.innerHTML="";
+    s.order.forEach(ti=>{const t=teams[ti],row=document.createElement("div");row.className="result-input-row";row.innerHTML='<span class="result-team-symbol">'+t.symbol+'</span><span class="result-team-name">'+t.name+'</span><span class="result-checks"><label><input type="radio" name="res-ix-'+ti+'" id="chk-ix-'+ti+'-win" value="win" onchange="updatePreview(\'ix\')"> 勝</label><label><input type="radio" name="res-ix-'+ti+'" id="chk-ix-'+ti+'-lose" value="lose" onchange="updatePreview(\'ix\')"> 負</label><label><input type="radio" name="res-ix-'+ti+'" id="chk-ix-'+ti+'-draw" value="draw" onchange="updatePreview(\'ix\')"> 分</label></span>';container.appendChild(row);});
     return;
   }
-  const s=state[lid],teams=LEAGUES[lid].teams;
-  const container=document.getElementById("result-inputs-"+lid);
+  const s=state[lid],teams=LEAGUES[lid].teams,container=document.getElementById("result-inputs-"+lid);
   container.innerHTML="";
-  s.order.forEach(ti=>{
-    const t=teams[ti];
-    const row=document.createElement("div");
-    row.className="result-input-row";
-    row.innerHTML=
-      '<span class="result-team-symbol">'+t.symbol+'</span>'+
-      '<span class="result-team-name">'+t.name+'</span>'+
-      '<span class="result-checks">'+
-        '<label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-win" value="win" onchange="updatePreview(\''+lid+'\')"> 勝</label>'+
-        '<label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-lose" value="lose" onchange="updatePreview(\''+lid+'\')"> 負</label>'+
-        '<label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-draw" value="draw" onchange="updatePreview(\''+lid+'\')"> 分</label>'+
-      '</span>';
-    container.appendChild(row);
-  });
+  s.order.forEach(ti=>{const t=teams[ti],row=document.createElement("div");row.className="result-input-row";row.innerHTML='<span class="result-team-symbol">'+t.symbol+'</span><span class="result-team-name">'+t.name+'</span><span class="result-checks"><label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-win" value="win" onchange="updatePreview(\''+lid+'\')"> 勝</label><label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-lose" value="lose" onchange="updatePreview(\''+lid+'\')"> 負</label><label><input type="radio" name="res-'+lid+'-'+ti+'" id="chk-'+lid+'-'+ti+'-draw" value="draw" onchange="updatePreview(\''+lid+'\')"> 分</label></span>';container.appendChild(row);});
 }
-
 function renderList(lid,gbValues){
-  const s=state[lid],teams=LEAGUES[lid].teams;
-  const list=document.getElementById("list-"+lid);
+  const s=state[lid],teams=LEAGUES[lid].teams,list=document.getElementById("list-"+lid);
   list.innerHTML="";
   s.order.forEach((ti,rank)=>{
-    const t=teams[ti],isFirst=rank===0;
-    const gbVal=(!isFirst&&gbValues&&gbValues[rank-1]!==undefined)?gbValues[rank-1]:0;
-    const row=document.createElement("div");
-    row.className="team-row";
-    row.dataset.teamIdx=ti;
-    row.innerHTML=
-      '<span class="drag-handle">&#9776;</span>'+
-      '<span class="rank-badge">'+(rank+1)+'</span>'+
-      '<span class="symbol">'+t.symbol+'</span>'+
-      '<span class="team-name">'+t.name+'</span>'+
-      (isFirst
-        ?'<span class="first-label">首位</span>'
-        :'<span class="gb-wrap"><label>前差</label><input type="number" min="0" max="20" step="0.5" value="'+gbVal+'" id="gb-'+lid+'-'+rank+'" oninput="generate(\''+lid+'\');scheduleSave(\''+lid+'\')"></span>'
-      );
+    const t=teams[ti],isFirst=rank===0,gbVal=(!isFirst&&gbValues&&gbValues[rank-1]!==undefined)?gbValues[rank-1]:0;
+    const row=document.createElement("div");row.className="team-row";row.dataset.teamIdx=ti;
+    row.innerHTML='<span class="drag-handle">&#9776;</span><span class="rank-badge">'+(rank+1)+'</span><span class="symbol">'+t.symbol+'</span><span class="team-name">'+t.name+'</span>'+(isFirst?'<span class="first-label">首位</span>':'<span class="gb-wrap"><label>前差</label><input type="number" min="0" max="20" step="0.5" value="'+gbVal+'" id="gb-'+lid+'-'+rank+'" oninput="generate(\''+lid+'\');scheduleSave(\''+lid+'\')"></span>');
     list.appendChild(row);
   });
   generate(lid);
 }
-
-function syncOrderFromDOM(lid){
-  const list=document.getElementById("list-"+lid);
-  const rows=[...list.querySelectorAll(".team-row")];
-  state[lid].order=rows.map(r=>parseInt(r.dataset.teamIdx));
-  refreshRanks(lid);generate(lid);
-}
-
+function syncOrderFromDOM(lid){const list=document.getElementById("list-"+lid),rows=[...list.querySelectorAll(".team-row")];state[lid].order=rows.map(r=>parseInt(r.dataset.teamIdx));refreshRanks(lid);generate(lid);}
 function refreshRanks(lid){
-  const list=document.getElementById("list-"+lid);
-  const rows=[...list.querySelectorAll(".team-row")];
+  const list=document.getElementById("list-"+lid),rows=[...list.querySelectorAll(".team-row")];
   rows.forEach((row,rank)=>{
-    const isFirst=rank===0;
-    row.querySelector(".rank-badge").textContent=rank+1;
-    const gbWrap=row.querySelector(".gb-wrap");
-    const firstLabel=row.querySelector(".first-label");
+    const isFirst=rank===0;row.querySelector(".rank-badge").textContent=rank+1;
+    const gbWrap=row.querySelector(".gb-wrap"),firstLabel=row.querySelector(".first-label");
     const oldVal=gbWrap&&gbWrap.querySelector("input")?parseFloat(gbWrap.querySelector("input").value)||0:0;
-    if(isFirst&&gbWrap){
-      const span=document.createElement("span");
-      span.className="first-label";span.textContent="首位";gbWrap.replaceWith(span);
-    }else if(!isFirst&&firstLabel){
-      const span=document.createElement("span");
-      span.className="gb-wrap";
-      span.innerHTML='<label>前差</label><input type="number" min="0" max="20" step="0.5" value="0" id="gb-'+lid+'-'+rank+'" oninput="generate(\''+lid+'\');scheduleSave(\''+lid+'\')">';
-      firstLabel.replaceWith(span);
-    }else if(!isFirst&&gbWrap){
-      const input=gbWrap.querySelector("input");
-      if(input){input.id="gb-"+lid+"-"+rank;input.value=oldVal;}
-    }
+    if(isFirst&&gbWrap){const span=document.createElement("span");span.className="first-label";span.textContent="首位";gbWrap.replaceWith(span);}
+    else if(!isFirst&&firstLabel){const span=document.createElement("span");span.className="gb-wrap";span.innerHTML='<label>前差</label><input type="number" min="0" max="20" step="0.5" value="0" id="gb-'+lid+'-'+rank+'" oninput="generate(\''+lid+'\');scheduleSave(\''+lid+'\')">';firstLabel.replaceWith(span);}
+    else if(!isFirst&&gbWrap){const input=gbWrap.querySelector("input");if(input){input.id="gb-"+lid+"-"+rank;input.value=oldVal;}}
   });
 }
-
-function initSortable(lid){
-  const list=document.getElementById("list-"+lid);
-  Sortable.create(list,{
-    handle:".drag-handle",animation:150,
-    ghostClass:"sortable-ghost",dragClass:"sortable-drag",
-    onEnd:()=>{syncOrderFromDOM(lid);renderResultInputs(lid);saveCache(lid);}
-  });
-}
-
-function copyResult(lid){
-  const text=document.getElementById("result-"+lid).textContent;
-  navigator.clipboard.writeText(text).then(()=>{
-    const btn=document.getElementById("copy-"+lid);
-    btn.textContent="コピーしました！";
-    setTimeout(()=>btn.textContent="コピー",2000);
-  });
-}
+function initSortable(lid){const list=document.getElementById("list-"+lid);Sortable.create(list,{handle:".drag-handle",animation:150,ghostClass:"sortable-ghost",dragClass:"sortable-drag",onEnd:()=>{syncOrderFromDOM(lid);renderResultInputs(lid);saveCache(lid);}});}
+function copyResult(lid){const text=document.getElementById("result-"+lid).textContent;navigator.clipboard.writeText(text).then(()=>{const btn=document.getElementById("copy-"+lid);btn.textContent="コピーしました！";setTimeout(()=>btn.textContent="コピー",2000);});}
 
 ["cl","pl","ix"].forEach(lid=>{
-  const cache=loadCache(lid);
-  const tc=LEAGUES[lid].teams.length;
-  if(cache&&Array.isArray(cache.order)&&cache.order.length===tc){
-    state[lid].order=cache.order;renderList(lid,cache.gbs||[]);
-  }else{renderList(lid,[]);}
-  initSortable(lid);
-  renderResultInputs(lid);
+  const cache=loadCache(lid),tc=LEAGUES[lid].teams.length;
+  if(cache&&Array.isArray(cache.order)&&cache.order.length===tc){state[lid].order=cache.order;renderList(lid,cache.gbs||[]);}else{renderList(lid,[]);}
+  initSortable(lid);renderResultInputs(lid);
 });
-
 try{const pref=localStorage.getItem(PREF_KEY);if(pref==="1"){document.getElementById("pl-first-toggle").checked=true;applyOrder();}}catch(e){}
-try{
-  const ws=JSON.parse(localStorage.getItem(WALL_KEY)||"{}");
-  if(ws.show){document.getElementById("wall-toggle").checked=true;}
-  if(ws.wins!==undefined){document.getElementById("interleague-wins").value=ws.wins;}
-  generateAll();
-}catch(e){}
+try{const ws=JSON.parse(localStorage.getItem(WALL_KEY)||"{}");if(ws.show){document.getElementById("wall-toggle").checked=true;}if(ws.wins!==undefined){document.getElementById("interleague-wins").value=ws.wins;}generateAll();}catch(e){}
 </script>
 </body>
 </html>
