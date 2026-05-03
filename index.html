@@ -8,10 +8,8 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
-      background: #f9f9f7;
-      color: #1a1a18;
-      padding: 2rem 1.5rem;
-      line-height: 1.7;
+      background: #f9f9f7; color: #1a1a18;
+      padding: 2rem 1.5rem; line-height: 1.7;
     }
     h1 { font-size: 22px; font-weight: 500; margin-bottom: 1.25rem; }
     .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 1.5rem; }
@@ -24,11 +22,11 @@
       display: flex; align-items: center; gap: 10px;
       background: #fff; border: 0.5px solid rgba(0,0,0,0.12);
       border-radius: 8px; padding: 10px 12px;
-      cursor: grab; user-select: none; transition: opacity .15s, background .1s;
+      user-select: none; transition: opacity .15s, background .1s;
     }
-    .team-row.dragging { opacity: .35; cursor: grabbing; }
-    .team-row.drag-over { border-color: rgba(0,0,0,0.35); background: #f1efe8; }
-    .drag-handle { color: #888; font-size: 14px; cursor: grab; padding: 0 2px; flex-shrink: 0; }
+    .team-row.sortable-ghost { opacity: .35; }
+    .team-row.sortable-drag { opacity: .9; }
+    .drag-handle { color: #888; font-size: 14px; padding: 0 2px; flex-shrink: 0; cursor: grab; touch-action: none; }
     .rank-badge {
       width: 22px; height: 22px; border-radius: 50%; background: #f1efe8;
       display: flex; align-items: center; justify-content: center;
@@ -61,13 +59,12 @@
     hr.divider { border: none; border-top: 0.5px solid rgba(0,0,0,0.12); margin: 0 0 2.5rem; }
     @media (prefers-color-scheme: dark) {
       body { background: #1c1c1a; color: #e8e6df; }
-      .toggle-row label { color: #b4b2a9; }
-      .league-label { color: #b4b2a9; }
+      .toggle-row label, .league-label { color: #b4b2a9; }
       .team-row { background: #2a2a28; border-color: rgba(255,255,255,0.1); }
-      .team-row.drag-over { background: #333330; border-color: rgba(255,255,255,0.3); }
+      .team-row.sortable-ghost { opacity: .35; }
       .rank-badge { background: #333330; color: #b4b2a9; }
       .team-name { color: #b4b2a9; }
-      .first-label { color: #666; }
+      .first-label, .drag-handle { color: #666; }
       .gb-wrap label { color: #666; }
       .gb-wrap input { background: #2a2a28; color: #e8e6df; border-color: rgba(255,255,255,0.15); }
       button { color: #e8e6df; border-color: rgba(255,255,255,0.2); }
@@ -76,7 +73,6 @@
       .result-label { color: #b4b2a9; }
       .result-text { color: #e8e6df; }
       hr.divider { border-color: rgba(255,255,255,0.1); }
-      .drag-handle { color: #666; }
     }
   </style>
 </head>
@@ -127,6 +123,7 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
 <script>
 const LEAGUES = {
   cl: {
@@ -154,10 +151,9 @@ const LEAGUES = {
 };
 
 const state = {
-  cl: { order:[0,1,2,3,4,5], dragSrc:null, saveTimer:null },
-  pl: { order:[0,1,2,3,4,5], dragSrc:null, saveTimer:null },
+  cl: { order:[0,1,2,3,4,5], saveTimer:null },
+  pl: { order:[0,1,2,3,4,5], saveTimer:null },
 };
-
 const PREF_KEY = "npb_pl_first";
 
 function applyOrder() {
@@ -165,7 +161,7 @@ function applyOrder() {
   const wrapper = document.getElementById("sections-wrapper");
   const secCl = document.getElementById("section-cl");
   const secPl = document.getElementById("section-pl");
-  if (plFirst) { wrapper.insertBefore(secPl, secCl); }
+  if(plFirst){ wrapper.insertBefore(secPl, secCl); }
   else { wrapper.insertBefore(secCl, secPl); }
   try { localStorage.setItem(PREF_KEY, plFirst ? "1" : "0"); } catch(e){}
 }
@@ -182,7 +178,7 @@ function saveCache(lid) {
       const el=document.getElementById("gb-"+lid+"-"+i);
       gbs.push(el?parseFloat(el.value)||0:0);
     }
-    localStorage.setItem(LEAGUES[lid].key, JSON.stringify({order:s.order,gbs}));
+    localStorage.setItem(LEAGUES[lid].key, JSON.stringify({order:s.order, gbs}));
     showSaved(lid);
   } catch(e){}
 }
@@ -203,11 +199,12 @@ function renderList(lid, gbValues) {
   const s=state[lid], teams=LEAGUES[lid].teams;
   const list=document.getElementById("list-"+lid);
   list.innerHTML="";
-  s.order.forEach((ti,rank)=>{
+  s.order.forEach((ti, rank)=>{
     const t=teams[ti], isFirst=rank===0;
     const gbVal=(!isFirst&&gbValues&&gbValues[rank-1]!==undefined)?gbValues[rank-1]:0;
     const row=document.createElement("div");
-    row.className="team-row"; row.draggable=true;
+    row.className="team-row";
+    row.dataset.teamIdx=ti;
     row.innerHTML=
       '<span class="drag-handle">&#9776;</span>'+
       '<span class="rank-badge">'+(rank+1)+'</span>'+
@@ -217,38 +214,59 @@ function renderList(lid, gbValues) {
         ? '<span class="first-label">首位</span>'
         : '<span class="gb-wrap"><label>前差</label><input type="number" min="0" max="20" step="0.5" value="'+gbVal+'" id="gb-'+lid+'-'+rank+'" oninput="generate(\''+lid+'\');scheduleSave(\''+lid+'\')"></span>'
       );
-    row.addEventListener("dragstart",e=>{ s.dragSrc=rank; setTimeout(()=>row.classList.add("dragging"),0); e.dataTransfer.effectAllowed="move"; });
-    row.addEventListener("dragend",()=>row.classList.remove("dragging"));
-    row.addEventListener("dragover",e=>{ e.preventDefault(); list.querySelectorAll(".team-row").forEach(r=>r.classList.remove("drag-over")); row.classList.add("drag-over"); });
-    row.addEventListener("dragleave",()=>row.classList.remove("drag-over"));
-    row.addEventListener("drop",e=>{
-      e.preventDefault(); row.classList.remove("drag-over");
-      const from=s.dragSrc;
-      if(from===null||from===rank) return;
-      const saved=collectGbs(lid), newOrder=[...s.order];
-      const [moved]=newOrder.splice(from,1); newOrder.splice(rank,0,moved);
-      s.order=newOrder;
-      const newGbs=[...saved], fi=from-1, ti2=rank-1;
-      if(from===0&&rank>0){ newGbs.splice(ti2,0,0); }
-      else if(rank===0&&from>0){ newGbs.splice(fi,1); }
-      else { const [g]=newGbs.splice(fi,1); newGbs.splice(ti2<0?0:ti2,0,g); }
-      renderList(lid,newGbs); saveCache(lid);
-    });
     list.appendChild(row);
   });
   generate(lid);
 }
 
-function collectGbs(lid) {
-  const vals=[];
-  for(let i=1;i<state[lid].order.length;i++){
-    const el=document.getElementById("gb-"+lid+"-"+i);
-    vals.push(el?parseFloat(el.value)||0:0);
-  }
-  return vals;
+function syncOrderFromDOM(lid) {
+  const list=document.getElementById("list-"+lid);
+  const rows=[...list.querySelectorAll(".team-row")];
+  state[lid].order=rows.map(r=>parseInt(r.dataset.teamIdx));
+  refreshRanks(lid);
+  generate(lid);
 }
 
-function getGb(lid,rank) {
+function refreshRanks(lid) {
+  const list=document.getElementById("list-"+lid);
+  const rows=[...list.querySelectorAll(".team-row")];
+  rows.forEach((row, rank)=>{
+    const isFirst=rank===0;
+    row.querySelector(".rank-badge").textContent=rank+1;
+    const gbWrap=row.querySelector(".gb-wrap");
+    const firstLabel=row.querySelector(".first-label");
+    const oldVal=gbWrap&&gbWrap.querySelector("input")?parseFloat(gbWrap.querySelector("input").value)||0:0;
+    if(isFirst&&gbWrap){
+      const span=document.createElement("span");
+      span.className="first-label"; span.textContent="首位";
+      gbWrap.replaceWith(span);
+    } else if(!isFirst&&firstLabel){
+      const span=document.createElement("span");
+      span.className="gb-wrap";
+      span.innerHTML='<label>前差</label><input type="number" min="0" max="20" step="0.5" value="0" id="gb-'+lid+'-'+rank+'" oninput="generate(\''+lid+'\');scheduleSave(\''+lid+'\')">';
+      firstLabel.replaceWith(span);
+    } else if(!isFirst&&gbWrap){
+      const input=gbWrap.querySelector("input");
+      if(input){ input.id="gb-"+lid+"-"+rank; input.value=oldVal; }
+    }
+  });
+}
+
+function initSortable(lid) {
+  const list=document.getElementById("list-"+lid);
+  Sortable.create(list, {
+    handle: ".drag-handle",
+    animation: 150,
+    ghostClass: "sortable-ghost",
+    dragClass: "sortable-drag",
+    onEnd: ()=>{
+      syncOrderFromDOM(lid);
+      saveCache(lid);
+    }
+  });
+}
+
+function getGb(lid, rank) {
   if(rank===0) return 0;
   const el=document.getElementById("gb-"+lid+"-"+rank);
   const v=parseFloat(el?el.value:0);
@@ -274,6 +292,7 @@ function resetLeague(lid) {
   state[lid].order=LEAGUES[lid].teams.map((_,i)=>i);
   try{ localStorage.removeItem(LEAGUES[lid].key); }catch(e){}
   renderList(lid,[]);
+  initSortable(lid);
 }
 
 function copyResult(lid) {
@@ -290,6 +309,7 @@ function copyResult(lid) {
   if(cache&&Array.isArray(cache.order)&&cache.order.length===LEAGUES[lid].teams.length){
     state[lid].order=cache.order; renderList(lid,cache.gbs||[]);
   } else { renderList(lid,[]); }
+  initSortable(lid);
 });
 
 try {
